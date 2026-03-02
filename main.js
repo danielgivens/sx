@@ -66,10 +66,11 @@ function createBumpChart(racers, positions) {
   // Create datasets with total scores for sorting
   const datasetsWithTotals = racers.map((racer, idx) => {
     const racerPositions = positions.map(round => round[idx])
-    const total = racer.scores.reduce((sum, score) => sum + score, 0)
+    const latestPosition = racerPositions[racerPositions.length - 1] // Position in latest round
+    const totalPoints = racer.scores.reduce((sum, score) => sum + score, 0)
 
     return {
-      label: racer.name,
+      label: racer.name + ' (' + totalPoints + ')',
       data: racerPositions,
       scores: racer.scores, // Include scores for tooltip
       borderColor: colors[idx % colors.length],
@@ -78,15 +79,15 @@ function createBumpChart(racers, positions) {
       pointRadius: 6,
       pointHoverRadius: 8,
       tension: 0.3,
-      total: total
+      latestPosition: latestPosition
     }
   })
 
-  // Sort by total score descending (best to worst)
-  datasetsWithTotals.sort((a, b) => b.total - a.total)
+  // Sort by latest round position (ascending - P1, P2, P3, etc.)
+  datasetsWithTotals.sort((a, b) => a.latestPosition - b.latestPosition)
 
-  // Remove total property (not needed for Chart.js, but keep scores)
-  const datasets = datasetsWithTotals.map(({ total, ...dataset }) => dataset)
+  // Remove latestPosition property (not needed for Chart.js, but keep scores)
+  const datasets = datasetsWithTotals.map(({ latestPosition, ...dataset }) => dataset)
 
   const labels = Array.from({ length: rounds }, (_, i) => `R${i + 1}`)
 
@@ -204,7 +205,7 @@ function createBumpChart(racers, positions) {
             color: 'rgba(110, 231, 183, 0.1)'
           },
           title: {
-            display: true,
+            display: false,
             text: 'Round',
             color: '#6ee7b7',
             font: {
@@ -232,19 +233,23 @@ function createStandings(racers) {
 
   totals.sort((a, b) => b.total - a.total)
 
+  const leaderTotal = totals[0].total
+
   let standings = '<div class="mt-8">\n'
-  standings += '<h2 class="mb-4">Average Scores</h2>\n'
+  standings += '<h2 class="mb-4">Standings</h2>\n'
   standings += '<div class="overflow-x-auto">\n'
-  standings += '<pre class="text-xs sm:text-sm">\n'
-  standings += 'Pos  Name                  Total Points   Avg\n'
-  standings += '───  ──────────────────    ────────────   ────\n'
+  standings += '<pre class="">\n'
+  standings += 'Pos  Name                  Total Points   Avg    Behind\n'
+  standings += '───  ──────────────────    ────────────   ────   ──────\n'
 
   totals.forEach((racer, idx) => {
     const pos = (idx + 1).toString().padStart(2, ' ')
     const name = racer.name.padEnd(20, ' ')
     const total = racer.total.toString().padStart(6, ' ')
     const avg = (racer.total / racer.scores.length).toFixed(1).padStart(5, ' ')
-    standings += pos + '   ' + name + '  ' + total + '       ' + avg + '\n'
+    const behindValue = racer.total - leaderTotal
+    const behind = behindValue.toString().padStart(6, ' ')
+    standings += pos + '   ' + name + '  ' + total + '       ' + avg + '    ' + behind + '\n'
   })
 
   standings += '</pre>\n'
@@ -277,7 +282,7 @@ function createTopScores(racers) {
   let html = '<div class="mt-8">\n'
   html += '<h2 class="mb-4">Top Scorers</h2>\n'
   html += '<div class="overflow-x-auto">\n'
-  html += '<pre class="text-xs sm:text-sm">\n'
+  html += '<pre class="">\n'
   html += 'Rank  Name                  Score   Round\n'
   html += '────  ──────────────────    ─────   ─────\n'
 
@@ -287,6 +292,89 @@ function createTopScores(racers) {
     const score = item.score.toString().padStart(5, ' ')
     const round = ('R' + item.round).padStart(5, ' ')
     html += rank + '    ' + name + '  ' + score + '   ' + round + '\n'
+  })
+
+  html += '</pre>\n'
+  html += '</div>\n'
+  html += '</div>\n'
+
+  return html
+}
+
+// Create lowest scores list
+function createLowestScores(racers) {
+  const allScores = []
+
+  racers.forEach(racer => {
+    racer.scores.forEach((score, roundIdx) => {
+      allScores.push({
+        name: racer.name,
+        score: score,
+        round: roundIdx + 1
+      })
+    })
+  })
+
+  // Sort by score ascending (lowest first)
+  allScores.sort((a, b) => a.score - b.score)
+
+  // Take bottom 10
+  const lowestScores = allScores.slice(0, 10)
+
+  let html = '<div class="mt-8">\n'
+  html += '<h2 class="mb-4">Lowest Scorers</h2>\n'
+  html += '<div class="overflow-x-auto">\n'
+  html += '<pre class="">\n'
+  html += 'Rank  Name                  Score   Round\n'
+  html += '────  ──────────────────    ─────   ─────\n'
+
+  lowestScores.forEach((item, idx) => {
+    const rank = (idx + 1).toString().padStart(2, ' ')
+    const name = item.name.padEnd(20, ' ')
+    const score = item.score.toString().padStart(5, ' ')
+    const round = ('R' + item.round).padStart(5, ' ')
+    html += rank + '    ' + name + '  ' + score + '   ' + round + '\n'
+  })
+
+  html += '</pre>\n'
+  html += '</div>\n'
+  html += '</div>\n'
+
+  return html
+}
+
+// Create podiums list
+function createPodiums(racers, positions) {
+  const podiumCounts = racers.map((racer, idx) => {
+    // Count how many times this racer was in positions 1, 2, or 3
+    let podiumCount = 0
+    positions.forEach(roundPositions => {
+      if (roundPositions[idx] <= 3) {
+        podiumCount++
+      }
+    })
+
+    return {
+      name: racer.name,
+      podiums: podiumCount
+    }
+  })
+
+  // Sort by podium count descending
+  podiumCounts.sort((a, b) => b.podiums - a.podiums)
+
+  let html = '<div class="mt-8">\n'
+  html += '<h2 class="mb-4">Podium Finishes</h2>\n'
+  html += '<div class="overflow-x-auto">\n'
+  html += '<pre class="">\n'
+  html += 'Pos  Name                  Podiums\n'
+  html += '───  ──────────────────    ───────\n'
+
+  podiumCounts.forEach((item, idx) => {
+    const pos = (idx + 1).toString().padStart(2, ' ')
+    const name = item.name.padEnd(20, ' ')
+    const podiums = item.podiums.toString().padStart(7, ' ')
+    html += pos + '   ' + name + '  ' + podiums + '\n'
   })
 
   html += '</pre>\n'
@@ -310,8 +398,10 @@ async function init() {
     html += '<canvas id="lapChart"></canvas>\n'
     html += '</div>\n'
     html += '</div>\n'
-    html += createTopScores(racers)
     html += createStandings(racers)
+    html += createTopScores(racers)
+    html += createLowestScores(racers)
+    html += createPodiums(racers, positions)
 
     app.innerHTML = html
 
