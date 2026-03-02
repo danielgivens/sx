@@ -394,7 +394,7 @@ async function init() {
 
     // Build the UI
     let html = '<div class="mb-8 overflow-x-auto">\n'
-    html += '<div style="" class="w-full h-96 sm:h-[500px] md:h-[600px]">\n'
+    html += '<div style="" class="w-full h-[500px] sm:h-[600px] md:h-[700px]">\n'
     html += '<canvas id="lapChart"></canvas>\n'
     html += '</div>\n'
     html += '</div>\n'
