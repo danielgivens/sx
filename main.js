@@ -646,7 +646,7 @@ function createBrandRoster(racers) {
   // Sort brands alphabetically
   const sortedBrands = Object.keys(brandRiders).sort()
 
-  let html = '<div class="mt-4 mb-8">\n'
+  let html = '<div class="my-8 py-4">\n'
   html += '<div class="flex flex-wrap gap-x-6 gap-y-2 items-center">\n'
 
   sortedBrands.forEach(brand => {
@@ -664,37 +664,181 @@ function createBrandRoster(racers) {
   return html
 }
 
+// Create brand points table
+function createBrandPoints(racers, racePositions) {
+  const brandPoints = {}
+  const brandRiderCounts = {}
+  const brandWins = {}
+  const brandPodiums = {}
+
+  racers.forEach((racer, racerIdx) => {
+    const total = racer.scores.reduce((sum, score) => sum + score, 0)
+    if (!brandPoints[racer.brand]) {
+      brandPoints[racer.brand] = 0
+      brandRiderCounts[racer.brand] = 0
+      brandWins[racer.brand] = 0
+      brandPodiums[racer.brand] = 0
+    }
+    brandPoints[racer.brand] += total
+    brandRiderCounts[racer.brand]++
+
+    // Count wins and podiums
+    racePositions.forEach(roundPositions => {
+      const position = roundPositions[racerIdx]
+      if (position === 1) {
+        brandWins[racer.brand]++
+      }
+      if (position <= 3) {
+        brandPodiums[racer.brand]++
+      }
+    })
+  })
+
+  const sortedBrands = Object.entries(brandPoints).sort((a, b) => b[1] - a[1])
+
+  let html = '<div class="col-span-full">\n'
+  html += '<h2 class="mb-4">Brand Points</h2>\n'
+  html += '<div class="overflow-x-auto">\n'
+  html += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<th class="py-2 px-4">Pos</th>\n'
+  html += '<th class="py-2 px-4">Brand</th>\n'
+  html += '<th class="py-2 px-4 text-right">Points</th>\n'
+  html += '<th class="py-2 px-4 text-right">Riders</th>\n'
+  html += '<th class="py-2 px-4 text-right">Avg/Rider</th>\n'
+  html += '<th class="py-2 px-4 text-right">Wins</th>\n'
+  html += '<th class="py-2 px-4 text-right">Podiums</th>\n'
+  html += '</tr></thead>\n'
+  html += '<tbody>\n'
+
+  sortedBrands.forEach(([brand, points], idx) => {
+    const pos = idx + 1
+    const avg = (points / brandRiderCounts[brand]).toFixed(1)
+    html += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    html += '<td class="py-2 px-4">' + pos + '</td>\n'
+    html += '<td class="py-2 px-4">' + brand + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + points + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + brandRiderCounts[brand] + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + avg + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + brandWins[brand] + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + brandPodiums[brand] + '</td>\n'
+    html += '</tr>\n'
+  })
+
+  html += '</tbody>\n'
+  html += '</table>\n'
+  html += '</div>\n'
+  html += '</div>\n'
+
+  return html
+}
+
+// Create round results tables
+function createRoundResults(racers, racePositions) {
+  const rounds = racers[0].scores.length
+  let html = ''
+
+  // Loop backwards to show most recent round first
+  for (let roundIdx = rounds - 1; roundIdx >= 0; roundIdx--) {
+    const roundNum = roundIdx + 1
+
+    // Get all racers with their position and score for this round
+    const roundResults = racers.map((racer, racerIdx) => ({
+      name: racer.name,
+      position: racePositions[roundIdx][racerIdx],
+      score: racer.scores[roundIdx]
+    }))
+
+    // Sort by position
+    roundResults.sort((a, b) => a.position - b.position)
+
+    html += '<div>\n'
+    html += '<h2 class="mb-4">Round ' + roundNum + '</h2>\n'
+    html += '<div class="overflow-x-auto">\n'
+    html += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    html += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    html += '<th class="py-2 px-4">Pos</th>\n'
+    html += '<th class="py-2 px-4">Name</th>\n'
+    html += '<th class="py-2 px-4 text-right">Score</th>\n'
+    html += '</tr></thead>\n'
+    html += '<tbody>\n'
+
+    roundResults.forEach((result) => {
+      html += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+      html += '<td class="py-2 px-4">P' + result.position + '</td>\n'
+      html += '<td class="py-2 px-4">' + result.name + '</td>\n'
+      html += '<td class="py-2 px-4 text-right">' + result.score + '</td>\n'
+      html += '</tr>\n'
+    })
+
+    html += '</tbody>\n'
+    html += '</table>\n'
+    html += '</div>\n'
+    html += '</div>\n'
+  }
+
+  return html
+}
+
 // Create standings table
-function createStandings(racers) {
+function createStandings(racers, racePositions) {
   const totals = racers.map((racer, idx) => ({
     index: idx,
     name: racer.name,
     total: racer.scores.reduce((sum, score) => sum + score, 0),
-    scores: racer.scores
+    scores: racer.scores,
+    wins: 0,
+    podiums: 0
   }))
+
+  // Calculate wins and podium counts for each racer
+  racers.forEach((racer, racerIdx) => {
+    racePositions.forEach(roundPositions => {
+      if (roundPositions[racerIdx] === 1) {
+        totals[racerIdx].wins++
+      }
+      if (roundPositions[racerIdx] <= 3) {
+        totals[racerIdx].podiums++
+      }
+    })
+  })
 
   totals.sort((a, b) => b.total - a.total)
 
   const leaderTotal = totals[0].total
 
-  let standings = '<div class="mt-8">\n'
+  let standings = '<div class="col-span-full">\n'
   standings += '<h2 class="mb-4">Standings</h2>\n'
   standings += '<div class="overflow-x-auto">\n'
-  standings += '<pre class="">\n'
-  standings += 'Pos  Name                  Total Points   Avg    Behind\n'
-  standings += '───  ──────────────────    ────────────   ────   ──────\n'
+  standings += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  standings += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  standings += '<th class="py-2 px-4">Pos</th>\n'
+  standings += '<th class="py-2 px-4">Name</th>\n'
+  standings += '<th class="py-2 px-4 text-right">Total</th>\n'
+  standings += '<th class="py-2 px-4 text-right">Avg</th>\n'
+  standings += '<th class="py-2 px-4 text-right">Behind</th>\n'
+  standings += '<th class="py-2 px-4 text-right">Wins</th>\n'
+  standings += '<th class="py-2 px-4 text-right">Podiums</th>\n'
+  standings += '</tr></thead>\n'
+  standings += '<tbody>\n'
 
   totals.forEach((racer, idx) => {
-    const pos = (idx + 1).toString().padStart(2, ' ')
-    const name = racer.name.padEnd(20, ' ')
-    const total = racer.total.toString().padStart(6, ' ')
-    const avg = (racer.total / racer.scores.length).toFixed(1).padStart(5, ' ')
-    const behindValue = racer.total - leaderTotal
-    const behind = behindValue.toString().padStart(6, ' ')
-    standings += pos + '   ' + name + '  ' + total + '       ' + avg + '    ' + behind + '\n'
+    const pos = idx + 1
+    const avg = (racer.total / racer.scores.length).toFixed(1)
+    const behind = racer.total - leaderTotal
+    standings += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    standings += '<td class="py-2 px-4">' + pos + '</td>\n'
+    standings += '<td class="py-2 px-4">' + racer.name + '</td>\n'
+    standings += '<td class="py-2 px-4 text-right">' + racer.total + '</td>\n'
+    standings += '<td class="py-2 px-4 text-right">' + avg + '</td>\n'
+    standings += '<td class="py-2 px-4 text-right">' + behind + '</td>\n'
+    standings += '<td class="py-2 px-4 text-right">' + racer.wins + '</td>\n'
+    standings += '<td class="py-2 px-4 text-right">' + racer.podiums + '</td>\n'
+    standings += '</tr>\n'
   })
 
-  standings += '</pre>\n'
+  standings += '</tbody>\n'
+  standings += '</table>\n'
   standings += '</div>\n'
   standings += '</div>\n'
 
@@ -721,22 +865,30 @@ function createTopScores(racers) {
   // Take top 10
   const topScores = allScores.slice(0, 10)
 
-  let html = '<div class="mt-8">\n'
+  let html = '<div class="lg:col-span-2">\n'
   html += '<h2 class="mb-4">Top Scorers</h2>\n'
   html += '<div class="overflow-x-auto">\n'
-  html += '<pre class="">\n'
-  html += 'Rank  Name                  Score   Round\n'
-  html += '────  ──────────────────    ─────   ─────\n'
+  html += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<th class="py-2 px-4">Rank</th>\n'
+  html += '<th class="py-2 px-4">Name</th>\n'
+  html += '<th class="py-2 px-4 text-right">Score</th>\n'
+  html += '<th class="py-2 px-4 text-right">Round</th>\n'
+  html += '</tr></thead>\n'
+  html += '<tbody>\n'
 
   topScores.forEach((item, idx) => {
-    const rank = (idx + 1).toString().padStart(2, ' ')
-    const name = item.name.padEnd(20, ' ')
-    const score = item.score.toString().padStart(5, ' ')
-    const round = ('R' + item.round).padStart(5, ' ')
-    html += rank + '    ' + name + '  ' + score + '   ' + round + '\n'
+    const rank = idx + 1
+    html += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    html += '<td class="py-2 px-4">' + rank + '</td>\n'
+    html += '<td class="py-2 px-4">' + item.name + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + item.score + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">R' + item.round + '</td>\n'
+    html += '</tr>\n'
   })
 
-  html += '</pre>\n'
+  html += '</tbody>\n'
+  html += '</table>\n'
   html += '</div>\n'
   html += '</div>\n'
 
@@ -763,63 +915,30 @@ function createLowestScores(racers) {
   // Take bottom 10
   const lowestScores = allScores.slice(0, 10)
 
-  let html = '<div class="mt-8">\n'
+  let html = '<div class="lg:col-span-2">\n'
   html += '<h2 class="mb-4">Lowest Scorers</h2>\n'
   html += '<div class="overflow-x-auto">\n'
-  html += '<pre class="">\n'
-  html += 'Rank  Name                  Score   Round\n'
-  html += '────  ──────────────────    ─────   ─────\n'
+  html += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<th class="py-2 px-4">Rank</th>\n'
+  html += '<th class="py-2 px-4">Name</th>\n'
+  html += '<th class="py-2 px-4 text-right">Score</th>\n'
+  html += '<th class="py-2 px-4 text-right">Round</th>\n'
+  html += '</tr></thead>\n'
+  html += '<tbody>\n'
 
   lowestScores.forEach((item, idx) => {
-    const rank = (idx + 1).toString().padStart(2, ' ')
-    const name = item.name.padEnd(20, ' ')
-    const score = item.score.toString().padStart(5, ' ')
-    const round = ('R' + item.round).padStart(5, ' ')
-    html += rank + '    ' + name + '  ' + score + '   ' + round + '\n'
+    const rank = idx + 1
+    html += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+    html += '<td class="py-2 px-4">' + rank + '</td>\n'
+    html += '<td class="py-2 px-4">' + item.name + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">' + item.score + '</td>\n'
+    html += '<td class="py-2 px-4 text-right">R' + item.round + '</td>\n'
+    html += '</tr>\n'
   })
 
-  html += '</pre>\n'
-  html += '</div>\n'
-  html += '</div>\n'
-
-  return html
-}
-
-// Create podiums list
-function createPodiums(racers, positions) {
-  const podiumCounts = racers.map((racer, idx) => {
-    // Count how many times this racer was in positions 1, 2, or 3
-    let podiumCount = 0
-    positions.forEach(roundPositions => {
-      if (roundPositions[idx] <= 3) {
-        podiumCount++
-      }
-    })
-
-    return {
-      name: racer.name,
-      podiums: podiumCount
-    }
-  })
-
-  // Sort by podium count descending
-  podiumCounts.sort((a, b) => b.podiums - a.podiums)
-
-  let html = '<div class="mt-8">\n'
-  html += '<h2 class="mb-4">Podium Finishes</h2>\n'
-  html += '<div class="overflow-x-auto">\n'
-  html += '<pre class="">\n'
-  html += 'Pos  Name                  Podiums\n'
-  html += '───  ──────────────────    ───────\n'
-
-  podiumCounts.forEach((item, idx) => {
-    const pos = (idx + 1).toString().padStart(2, ' ')
-    const name = item.name.padEnd(20, ' ')
-    const podiums = item.podiums.toString().padStart(7, ' ')
-    html += pos + '   ' + name + '  ' + podiums + '\n'
-  })
-
-  html += '</pre>\n'
+  html += '</tbody>\n'
+  html += '</table>\n'
   html += '</div>\n'
   html += '</div>\n'
 
@@ -844,13 +963,13 @@ async function init() {
     html += '</div>\n'
     html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">\n'
     html += '<div class="overflow-x-auto">\n'
-    html += '<h2 class="mb-4">Brand Points Distribution</h2>\n'
+    html += '<h2 class="mb-4 text-left">Brand Points Distribution</h2>\n'
     html += '<div style="" class="w-full h-[400px] sm:h-[500px]">\n'
     html += '<canvas id="brandPieChart"></canvas>\n'
     html += '</div>\n'
     html += '</div>\n'
     html += '<div class="overflow-x-auto">\n'
-    html += '<h2 class="mb-4">Brand Podium Finishes</h2>\n'
+    html += '<h2 class="mb-4 text-left">Brand Podium Finishes</h2>\n'
     html += '<div style="" class="w-full h-[400px] sm:h-[500px]">\n'
     html += '<canvas id="brandPodiumChart"></canvas>\n'
     html += '</div>\n'
@@ -863,10 +982,13 @@ async function init() {
     html += '<canvas id="lapChart"></canvas>\n'
     html += '</div>\n'
     html += '</div>\n'
-    html += createStandings(racers)
+    html += '<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">\n'
+    html += createStandings(racers, racePositions)
     html += createTopScores(racers)
     html += createLowestScores(racers)
-    html += createPodiums(racers, championshipPositions)
+    html += createBrandPoints(racers, racePositions)
+    html += createRoundResults(racers, racePositions)
+    html += '</div>\n'
 
     app.innerHTML = html
 
