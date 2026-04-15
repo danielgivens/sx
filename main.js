@@ -74,6 +74,29 @@ const colors = [
   '#ff8800', // orange
 ]
 
+// Helper function to generate initials from racer name
+function getInitials(name) {
+  // Custom mappings for specific names
+  const customInitials = {
+    'Theplantlady': 'TPL',
+    'BigJeffZilla': 'BJZ',
+    'Planiel': 'PLA'
+  }
+
+  if (customInitials[name]) {
+    return customInitials[name]
+  }
+
+  // Split on common separators and take first letter of each part
+  const parts = name.split(/[\s_-]+/).filter(p => p.length > 0)
+  if (parts.length === 1) {
+    // If single word, take first 2-3 letters
+    return name.substring(0, Math.min(3, name.length)).toUpperCase()
+  }
+  // Take first letter of each word, max 3
+  return parts.slice(0, 3).map(p => p[0].toUpperCase()).join('')
+}
+
 // Create pie chart showing total points by brand
 function createBrandPieChart(racers) {
   // Aggregate points by brand
@@ -300,28 +323,171 @@ function createBrandPodiumChart(racers, racePositions) {
   })
 }
 
-// Create race positions chart (based on individual round finishes)
-function createRacePositionsChart(racers, positions) {
-  const rounds = positions.length
+// Create stacked bar chart showing points by round for each racer
+function createStackedPointsChart(racers) {
+  const rounds = racers[0].scores.length
 
-  // Create datasets with total scores for sorting
+  // Generate colors for each round - using vibrant colors
+  const roundColors = [
+    '#ff0000', // red
+    '#00ffff', // cyan
+    '#0000ff', // blue
+    '#ffff00', // yellow
+    '#ff00ff', // magenta
+    '#00ff00', // green
+    '#ff8800', // orange
+    '#00ff88', // spring green
+    '#ff0088', // pink
+    '#8800ff', // purple
+    '#00ff00', // lime
+    '#ff00ff', // fuchsia
+    '#ff4400'  // orange-red
+  ]
+
+  // Sort racers by total points
+  const racersWithTotals = racers.map((racer, idx) => ({
+    racer: racer,
+    total: racer.scores.reduce((sum, score) => sum + score, 0)
+  }))
+  racersWithTotals.sort((a, b) => b.total - a.total)
+
+  // Create labels (racer names with totals)
+  const labels = racersWithTotals.map(({ racer, total }) => racer.name + ' (' + total + ')')
+
+  // Create datasets - one for each round
+  const datasets = []
+  for (let roundIdx = 0; roundIdx < rounds; roundIdx++) {
+    datasets.push({
+      label: 'R' + (roundIdx + 1),
+      data: racersWithTotals.map(({ racer }) => racer.scores[roundIdx]),
+      backgroundColor: roundColors[roundIdx % roundColors.length],
+      borderWidth: 0
+    })
+  }
+
+  const ctx = document.getElementById('stackedPointsChart')
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y', // Horizontal bars
+      layout: {
+        padding: {
+          top: 10,
+          bottom: 10,
+          left: 10,
+          right: 10
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#6ee7b7',
+            font: {
+              family: 'monospace',
+              size: 11
+            },
+            boxWidth: 15,
+            padding: 10
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          titleColor: '#6ee7b7',
+          bodyColor: '#6ee7b7',
+          borderColor: '#6ee7b7',
+          borderWidth: 1,
+          titleFont: {
+            family: 'monospace'
+          },
+          bodyFont: {
+            family: 'monospace'
+          },
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || ''
+              const value = context.parsed.x
+              return label + ': ' + value + ' pts'
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            color: '#6ee7b7',
+            font: {
+              family: 'monospace'
+            }
+          },
+          grid: {
+            color: 'rgba(110, 231, 183, 0.1)',
+            drawBorder: false
+          },
+          title: {
+            display: true,
+            text: 'Points',
+            color: '#6ee7b7',
+            font: {
+              family: 'monospace'
+            }
+          }
+        },
+        y: {
+          stacked: true,
+          ticks: {
+            color: '#6ee7b7',
+            font: {
+              family: 'monospace',
+              size: 11
+            }
+          },
+          grid: {
+            color: 'rgba(110, 231, 183, 0.1)'
+          }
+        }
+      }
+    }
+  })
+}
+
+// Create points progression chart showing cumulative points over rounds
+function createPointsProgressionChart(racers) {
+  const rounds = racers[0].scores.length
+
+  // Create datasets with cumulative points for each round
   const datasetsWithTotals = racers.map((racer, idx) => {
-    const racerPositions = positions.map(round => round[idx])
+    const cumulativePoints = []
+    let runningTotal = 0
+
+    racer.scores.forEach(score => {
+      runningTotal += score
+      cumulativePoints.push(runningTotal)
+    })
+
     const totalPoints = racer.scores.reduce((sum, score) => sum + score, 0)
-    const latestPosition = racerPositions[racerPositions.length - 1]
 
     return {
       label: racer.name + ' (' + totalPoints + ')',
-      data: racerPositions,
-      scores: racer.scores,
+      data: cumulativePoints,
+      scores: racer.scores, // Individual round scores for tooltip
       borderColor: colors[idx % colors.length],
       backgroundColor: colors[idx % colors.length],
       borderWidth: 4,
       pointRadius: 6,
       pointHoverRadius: 8,
       tension: 0.3,
-      totalPoints: totalPoints,
-      latestPosition: latestPosition
+      totalPoints: totalPoints
     }
   })
 
@@ -329,11 +495,11 @@ function createRacePositionsChart(racers, positions) {
   datasetsWithTotals.sort((a, b) => b.totalPoints - a.totalPoints)
 
   // Remove sorting properties
-  const datasets = datasetsWithTotals.map(({ totalPoints, latestPosition, ...dataset }) => dataset)
+  const datasets = datasetsWithTotals.map(({ totalPoints, ...dataset }) => dataset)
 
   const labels = Array.from({ length: rounds }, (_, i) => `R${i + 1}`)
 
-  const ctx = document.getElementById('racePositionsChart')
+  const ctx = document.getElementById('pointsProgressionChart')
 
   new Chart(ctx, {
     type: 'line',
@@ -388,31 +554,25 @@ function createRacePositionsChart(racers, positions) {
           callbacks: {
             label: function(context) {
               const roundIndex = context.dataIndex
-              const score = context.dataset.scores[roundIndex]
-              const position = context.parsed.y
-              return context.dataset.label + ': P' + position + ' (' + score + ' pts)'
+              const roundScore = context.dataset.scores[roundIndex]
+              const cumulativePoints = context.parsed.y
+              return context.dataset.label + ': ' + cumulativePoints + ' pts (+' + roundScore + ')'
             }
           },
           itemSort: function(a, b) {
-            // Sort by position in this round (ascending - P1 first)
-            return a.parsed.y - b.parsed.y
+            // Sort by cumulative points (descending - highest first)
+            return b.parsed.y - a.parsed.y
           }
         }
       },
       scales: {
         y: {
-          reverse: true, // Position 1 at top
-          min: 0.5,
-          max: racers.length + 0.5,
+          beginAtZero: true,
+          max: 640,
           ticks: {
-            stepSize: 1,
             color: '#6ee7b7',
             font: {
               family: 'monospace'
-            },
-            callback: function(value) {
-              if (!Number.isInteger(value) || value < 1 || value > racers.length) return ''
-              return 'P' + value
             }
           },
           grid: {
@@ -420,8 +580,8 @@ function createRacePositionsChart(racers, positions) {
             drawBorder: false
           },
           title: {
-            display: false,
-            text: 'Position',
+            display: true,
+            text: 'Cumulative Points',
             color: '#6ee7b7',
             font: {
               family: 'monospace'
@@ -733,6 +893,60 @@ function createBrandPoints(racers, racePositions) {
   return html
 }
 
+// Create results grid table showing initials and colors for each round
+function createResultsGrid(racers, racePositions) {
+  const rounds = racers[0].scores.length
+
+  let html = '<div class="col-span-full mb-8">\n'
+  html += '<h2 class="mb-4">Results by Round</h2>\n'
+  html += '<div class="overflow-x-auto">\n'
+  html += '<table class="w-full text-left" style="font-family: monospace; border: 1px solid rgba(110, 231, 183, 0.1);">\n'
+  html += '<thead><tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+
+  // Create column headers for each round
+  for (let i = 0; i < rounds; i++) {
+    html += '<th class="py-2 px-4 text-center">R' + (i + 1) + '</th>\n'
+  }
+
+  html += '</tr></thead>\n'
+  html += '<tbody>\n'
+
+  // Create rows for each position (P1 through P9)
+  for (let position = 1; position <= racers.length; position++) {
+    html += '<tr style="border-bottom: 1px solid rgba(110, 231, 183, 0.1);">\n'
+
+    // For each round, find who finished in this position
+    for (let roundIdx = 0; roundIdx < rounds; roundIdx++) {
+      const roundPositions = racePositions[roundIdx]
+
+      // Find the racer who finished in this position in this round
+      const racerIdx = roundPositions.indexOf(position)
+
+      if (racerIdx !== -1) {
+        const racer = racers[racerIdx]
+        const initials = getInitials(racer.name)
+        const racerColor = colors[racerIdx % colors.length]
+        const score = racer.scores[roundIdx]
+
+        html += '<td class="py-2 px-4 text-center" title="' + racer.name + ': ' + score + ' pts" style="background-color: ' + racerColor + ';">'
+        html += '<span style="color: #111827; font-weight: bold;">' + initials + '</span>'
+        html += '</td>\n'
+      } else {
+        html += '<td class="py-2 px-4 text-center">-</td>\n'
+      }
+    }
+
+    html += '</tr>\n'
+  }
+
+  html += '</tbody>\n'
+  html += '</table>\n'
+  html += '</div>\n'
+  html += '</div>\n'
+
+  return html
+}
+
 // Create round results tables
 function createRoundResults(racers, racePositions) {
   const rounds = racers[0].scores.length
@@ -955,11 +1169,30 @@ async function init() {
     const championshipPositions = calculatePositions(racers)
 
     // Build the UI
-    let html = '<h2 class="mb-4">Race Positions</h2>\n'
+    let html = '<h2 class="mb-4">Championship Standings</h2>\n'
     html += '<div class="mb-8 overflow-x-auto">\n'
     html += '<div style="" class="w-full h-[500px] sm:h-[600px] md:h-[700px]">\n'
-    html += '<canvas id="racePositionsChart"></canvas>\n'
+    html += '<canvas id="lapChart"></canvas>\n'
     html += '</div>\n'
+    html += '</div>\n'
+    html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 mt-12">\n'
+    html += '<div class="overflow-x-auto">\n'
+    html += '<h2 class="mb-4">Points Progression</h2>\n'
+    html += '<div style="" class="w-full h-[500px] sm:h-[600px]">\n'
+    html += '<canvas id="pointsProgressionChart"></canvas>\n'
+    html += '</div>\n'
+    html += '</div>\n'
+    html += '<div class="overflow-x-auto">\n'
+    html += '<h2 class="mb-4">Points by Round</h2>\n'
+    html += '<div style="" class="w-full h-[500px] sm:h-[600px]">\n'
+    html += '<canvas id="stackedPointsChart"></canvas>\n'
+    html += '</div>\n'
+    html += '</div>\n'
+    html += '</div>\n'
+    html += '<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">\n'
+    html += createStandings(racers, racePositions)
+    html += createTopScores(racers)
+    html += createLowestScores(racers)
     html += '</div>\n'
     html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">\n'
     html += '<div class="overflow-x-auto">\n'
@@ -976,24 +1209,17 @@ async function init() {
     html += '</div>\n'
     html += '</div>\n'
     html += createBrandRoster(racers)
-    html += '<h2 class="mb-4 mt-12">Championship Standings</h2>\n'
-    html += '<div class="mb-8 overflow-x-auto">\n'
-    html += '<div style="" class="w-full h-[500px] sm:h-[600px] md:h-[700px]">\n'
-    html += '<canvas id="lapChart"></canvas>\n'
-    html += '</div>\n'
-    html += '</div>\n'
-    html += '<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">\n'
-    html += createStandings(racers, racePositions)
-    html += createTopScores(racers)
-    html += createLowestScores(racers)
     html += createBrandPoints(racers, racePositions)
+    html += '<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">\n'
+    html += createResultsGrid(racers, racePositions)
     html += createRoundResults(racers, racePositions)
     html += '</div>\n'
 
     app.innerHTML = html
 
     // Create the charts after DOM is ready
-    createRacePositionsChart(racers, racePositions)
+    createPointsProgressionChart(racers)
+    createStackedPointsChart(racers)
     createBrandPieChart(racers)
     createBrandPodiumChart(racers, racePositions)
     createBumpChart(racers, championshipPositions)
