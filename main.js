@@ -82,7 +82,9 @@ function getInitials(name) {
     'Theplantlady': 'TPL',
     'BigJeffZilla': 'BJZ',
     'Planiel': 'PLN',
-    'Dr Steve B': 'DOC'
+    'Dr Steve B': 'DOC',
+    "I'm Nic James": 'NIC',
+    'Nomad Moto': 'NOM'
   }
 
   if (customInitials[name]) {
