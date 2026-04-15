@@ -78,9 +78,11 @@ const colors = [
 function getInitials(name) {
   // Custom mappings for specific names
   const customInitials = {
+    'HobbyRacingTeam': 'HRT',
     'Theplantlady': 'TPL',
     'BigJeffZilla': 'BJZ',
-    'Planiel': 'PLA'
+    'Planiel': 'PLN',
+    'Dr Steve B': 'DOC'
   }
 
   if (customInitials[name]) {
