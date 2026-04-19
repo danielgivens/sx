@@ -503,6 +503,12 @@ function createPointsProgressionChart(racers) {
 
   const labels = Array.from({ length: rounds }, (_, i) => `R${i + 1}`)
 
+  // Calculate the maximum cumulative points to set the y-axis scale
+  const maxCumulativePoints = Math.max(...datasetsWithTotals.map(d => d.totalPoints))
+  // Round up to next increment (e.g., if max is 658, round to 700; if 724, round to 800)
+  const increment = 100
+  const yAxisMax = Math.ceil(maxCumulativePoints / increment) * increment
+
   const ctx = document.getElementById('pointsProgressionChart')
 
   new Chart(ctx, {
@@ -572,7 +578,7 @@ function createPointsProgressionChart(racers) {
       scales: {
         y: {
           beginAtZero: true,
-          max: 640,
+          max: yAxisMax,
           ticks: {
             color: '#6ee7b7',
             font: {
