@@ -2,46 +2,46 @@
   {
 	"name": "HobbyRacingTeam",
 	"brand": "KTM",
-	"scores": [20]
+	"scores": [20, 57]
   },
   {
 	"name": "Planiel",
 	"brand": "HUS",
-	"scores": [50]
+	"scores": [50, 30]
   },
   {
 	"name": "BigJeffZilla",
 	"brand": "KTM",
-	"scores": [47]
+	"scores": [47, 30]
   },
   {
 	"name": "I'm Nic James",
 	"brand": "GAS",
-	"scores": [57]
+	"scores": [57, 67]
   },
   {
 	"name": "Tough Griff",
 	"brand": "HUS",
-	"scores": [50]
+	"scores": [50, 92]
   },
   {
 	"name": "Theplantlady",
 	"brand": "BETA",
-	"scores": [0]
+	"scores": [0, 0]
   },
   {
 	"name": "Nomad Moto",
 	"brand": "KTM",
-	"scores": [53]
+	"scores": [53, 30]
   },
   {
 	"name": "Dr Steve B",
 	"brand": "GAS",
-	"scores": [0]
+	"scores": [0, 0]
   },
   {
 	"name": "Fjo",
 	"brand": "BETA",
-	"scores": [0]
+	"scores": [0,0]
   }
 ]
